@@ -8,3 +8,4 @@
 
 include::readme.adoc[leveloffset=+1]
 include::install_guide.adoc[leveloffset=+1]
+include::user_workflow.adoc[leveloffset=+1]

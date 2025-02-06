@@ -1,0 +1,90 @@
+= Example Workflow
+
+This section takes you through two example workflows using `Watcher` to go through
+optimization scenarios. The first workflow, _instances consolidation in minimal compute
+nodes_ is demonstrated using the CLI. The second workflow,  ,
+is demonstrated the using `Horizon` UI and Prometheus mertics dashboards.
+
+== Requirements
+
+The example requires that the following setup is in place:
+* An OpenStack operators-based deployment with two or more Compute nodes
+* Nova Live migration is functional on your environment
+* Watcher has been deployed following the instructions in the User Installation Guide
+* Instances (Virtual Machines) have been created on the Compute nodes
+
+Test instances can be created using the link:helpers/deploy-instance-demo.sh.template[deploy-instance-demo.sh.template script]
+and modifying the script for your environment as show with the example commands below:
+
+[,console]
+----
+rm -f temp/deploy-instance-demo.sh
+cp deploy-instance-demo.sh.template temp/deploy-instance-demo.sh
+
+# $NETWORK_PREFIX is subnet prefixes.
+# This step is required if working within a shared tenant.
+# Each deployment must have their own prefix to avoid ip address collision
+sed -i "s/NETWORK_PREFIX/${NETWORK_PREFIX}/g" temp/deploy-instance-demo.sh
+
+# This example uses 8 instances.
+# Adjust the number per the number of instances to be used
+# in the test environment
+oc cp temp/deploy-instance-demo.sh openstackclient:/home/cloud-admin
+oc rsh openstackclient bash /home/cloud-admin/deploy-instance-demo.sh 8
+----
+
+You can check which hosts the VMs have been deployed on using the `--long` option
+on the `openstack server list` command:
+
+[,console]
+----
+$ oc rsh openstackclient openstack server list --project demo --long
++--------------------------------------+--------+--------+------------+-------------+-------------------------------------------------------+------------+--------------------------------------+----------+-------------------+-----------------+------------+-------------+
+| ID                                   | Name   | Status | Task State | Power State | Networks                                              | Image Name | Image ID                             | Flavor   | Availability Zone | Host            | Properties | Host Status |
++--------------------------------------+--------+--------+------------+-------------+-------------------------------------------------------+------------+--------------------------------------+----------+-------------------+-----------------+------------+-------------+
+| 01892b9b-c7bc-4e02-8132-9ca085f875d3 | test_7 | ACTIVE | None       | Running     | private_demo=${NETWORK_PREFIX}.122.205, 192.168.0.131 | cirros     | 2947bd5b-2cc8-4d6f-8347-8d571665aab7 | m1.small | nova              | mytest-compute1 |            | UP          |
+| 42fbbdd6-c605-4c4f-8918-7e629003b702 | test_6 | ACTIVE | None       | Running     | private_demo=${NETWORK_PREFIX}.122.239, 192.168.0.130 | cirros     | 2947bd5b-2cc8-4d6f-8347-8d571665aab7 | m1.small | nova              | mytest-compute2 |            | UP          |
+| a441b8d2-f501-44b3-858f-187bca02998b | test_5 | ACTIVE | None       | Running     | private_demo=${NETWORK_PREFIX}.122.218, 192.168.0.125 | cirros     | 2947bd5b-2cc8-4d6f-8347-8d571665aab7 | m1.small | nova              | mytest-compute1 |            | UP          |
+| 9b69cf58-d8ce-4642-9ea3-37216983e3a5 | test_4 | ACTIVE | None       | Running     | private_demo=${NETWORK_PREFIX}.122.201, 192.168.0.68  | cirros     | 2947bd5b-2cc8-4d6f-8347-8d571665aab7 | m1.small | nova              | mytest-compute2 |            | UP          |
+| f3c557fe-676c-4528-b972-b70385e55407 | test_3 | ACTIVE | None       | Running     | private_demo=${NETWORK_PREFIX}.122.179, 192.168.0.41  | cirros     | 2947bd5b-2cc8-4d6f-8347-8d571665aab7 | m1.small | nova              | mytest-compute1 |            | UP          |
+| 2f30da53-cd8f-441c-b1e8-e5e074fffa14 | test_2 | ACTIVE | None       | Running     | private_demo=${NETWORK_PREFIX}.122.188, 192.168.0.95  | cirros     | 2947bd5b-2cc8-4d6f-8347-8d571665aab7 | m1.small | nova              | mytest-compute2 |            | UP          |
+| b6a17b99-2d8c-4551-a91c-9dfe0282e886 | test_1 | ACTIVE | None       | Running     | private_demo=${NETWORK_PREFIX}.122.204, 192.168.0.127 | cirros     | 2947bd5b-2cc8-4d6f-8347-8d571665aab7 | m1.small | nova              | mytest-compute1 |            | UP          |
+| 25a7667e-ab3e-43a8-b6d0-de9e02777530 | test_0 | ACTIVE | None       | Running     | private_demo=${NETWORK_PREFIX}.122.202, 192.168.0.155 | cirros     | 2947bd5b-2cc8-4d6f-8347-8d571665aab7 | m1.small | nova              | mytest-compute1 |            | UP          |
++--------------------------------------+--------+--------+------------+-------------+-------------------------------------------------------+------------+--------------------------------------+----------+-------------------+-----------------+------------+-------------+
+----
+
+== Watcher Workflow (CLI)
+=== Optimization Scenario I: Instances Consolidation in Minimal Compute Nodes ===
+
+.Procedure
+. Create the Audit Template
++
+[,console]
+----
+$ openstack optimize audittemplate create -s node_resource_consolidation AuditTemplateNodeConsolidation server_consolidation
+
+----
++
+Check that audit template has been created with:
++
+[,console]
+----
+$ openstack optimize audittemplate list
+
+----
++
+. Now create the Audit
++
+[,console]
+----
+$ openstack optimize audit create -a AuditTemplateNodeConsolidation -t ONESHOT –name node_server_consolidation-PoC
+
+----
++
+Verify it was created with:
++
+----
+
+----
+
+== Watcher Workflow (UI)
